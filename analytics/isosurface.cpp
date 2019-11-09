@@ -16,7 +16,7 @@
 void writeImageData(std::string fileName,
                     std::array<uint64_t, 3> &shape,
                     std::array<uint64_t, 3> &offset,
-                    void* field)
+                    void *field)
 {
     auto importer = vtkSmartPointer<vtkImageImport>::New();
     importer->SetDataSpacing(1, 1, 1);
@@ -173,6 +173,15 @@ int main(int argc, char *argv[])
 
     Reader reader(MPI_COMM_WORLD, procs, 5);
 
+    uint64_t lb[3] = {offset_x, offset_y, offset_z};
+    uint64_t up[3] = {offset_x + size_x, offset_y + size_y, offset_z + size_z};
+
+    std::cout << "malloc " << size_x << "," << size_x << "," << size_x << std::endl;
+
+    void *data = NULL;
+    int memsize = size_x * size_y * size_z * sizeof(double);
+    data = (void *)malloc(memsize);
+
     for (int step = 1; step <= steps; step++)
     {
 
@@ -195,25 +204,20 @@ int main(int argc, char *argv[])
 
         //get variable
 
-        uint64_t lb[3] = {offset_x, offset_y, offset_z};
-        uint64_t up[3] = {offset_x + size_x, offset_y + size_y, offset_z + size_z};
-
-        void *data = (void *)malloc(size_x * size_y * size_z * sizeof(double));
+        //memset(data, 0, memsize);
 
         reader.read(MPI_COMM_WORLD, lb, up, step, data);
 
-        char countstr[50];
-        sprintf(countstr, "%02d_%04d", rank, step);
-        std::string fname = "./vtkdata/vtkiso_" + std::string(countstr) + ".vti";
-        
-        std::array<uint64_t, 3> shape = {{size_x,size_y,size_z}};
-        std::array<uint64_t, 3> offset = {{offset_x,offset_y,offset_z}};
+        //char countstr[50];
+        //sprintf(countstr, "%02d_%04d", rank, step);
+        // std::string fname = "./vtkdata/vtkiso_" + std::string(countstr) + ".vti";
+
+        //std::array<uint64_t, 3> shape = {{size_x, size_y, size_z}};
+        //std::array<uint64_t, 3> offset = {{offset_x, offset_y, offset_z}};
 
         //writeImageData(fname, shape, offset, data);
         //writePolyvtk(fname, polyData);
         std::cout << "ok for ts " << step << std::endl;
-
-        free(data);
     }
 
 #ifdef ENABLE_TIMERS
@@ -224,7 +228,6 @@ int main(int argc, char *argv[])
 #endif
 
     reader.close();
-
     MPI_Finalize();
 
     return 0;
