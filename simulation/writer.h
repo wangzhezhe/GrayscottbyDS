@@ -14,7 +14,7 @@ public:
     Writer(MPI_Comm comm ,int proc, int appid);
     //use this if write to the files
     //void open(const std::string &fname);
-    void write(const GrayScott &sim, int &step);
+    void write(const GrayScott &sim, MPI_Comm comm, int &step);
 
     void close(){ dspaces_finalize();}
 

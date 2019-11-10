@@ -12,6 +12,7 @@
 #include <vtkXMLDataSetWriter.h>
 #include "reader.h"
 #include <thread>
+#include <unistd.h>
 
 void writeImageData(std::string fileName,
                     std::array<uint64_t, 3> &shape,
@@ -91,9 +92,7 @@ int main(int argc, char *argv[])
 
     MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
 
-    const unsigned int color = 5;
-    MPI_Comm comm;
-    MPI_Comm_split(MPI_COMM_WORLD, color, wrank, &comm);
+    MPI_Comm comm = MPI_COMM_WORLD;
 
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &procs);
@@ -163,7 +162,6 @@ int main(int argc, char *argv[])
     log_fname << "isosurface_pe_" << rank << ".log";
 
     std::ofstream log(log_fname.str());
-    //log << "step\ttotal_iso\tread_iso\tcompute_write_iso" << std::endl;
 #endif
 
     //tl::engine clientEngine("verbs", THALLIUM_CLIENT_MODE);
@@ -171,16 +169,25 @@ int main(int argc, char *argv[])
 
     //gray scott simulation start from 1
 
-    Reader reader(MPI_COMM_WORLD, procs, 5);
+    Reader reader(comm, procs, 2);
 
-    uint64_t lb[3] = {offset_x, offset_y, offset_z};
-    uint64_t up[3] = {offset_x + size_x, offset_y + size_y, offset_z + size_z};
+    uint64_t lb[10] = {0}, ub[10] = {0};
 
-    std::cout << "malloc " << size_x << "," << size_x << "," << size_x << std::endl;
+    lb[0] = offset_x;
+    lb[1] = offset_y;
+    lb[2] = offset_z;
 
-    void *data = NULL;
+    ub[0] = offset_x + size_x - 1;
+    ub[1] = offset_y + size_y - 1;
+    ub[2] = offset_z + size_z - 1;
+
+    std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
+    std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
+
     int memsize = size_x * size_y * size_z * sizeof(double);
-    data = (void *)malloc(memsize);
+
+    double *data = NULL;
+    data = (double *)malloc(memsize);
 
     for (int step = 1; step <= steps; step++)
     {
@@ -206,7 +213,12 @@ int main(int argc, char *argv[])
 
         //memset(data, 0, memsize);
 
-        reader.read(MPI_COMM_WORLD, lb, up, step, data);
+        memset(data, 0, memsize);
+
+        std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
+        std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
+
+        reader.read(comm, lb, ub, step, data);
 
         //char countstr[50];
         //sprintf(countstr, "%02d_%04d", rank, step);
@@ -217,7 +229,7 @@ int main(int argc, char *argv[])
 
         //writeImageData(fname, shape, offset, data);
         //writePolyvtk(fname, polyData);
-        std::cout << "ok for ts " << step << std::endl;
+        std::cout << "ok to process data for step " << step << std::endl;
     }
 
 #ifdef ENABLE_TIMERS
@@ -227,6 +239,10 @@ int main(int argc, char *argv[])
     log.close();
 #endif
 
+    if (data)
+    {
+        free(data);
+    }
     reader.close();
     MPI_Finalize();
 

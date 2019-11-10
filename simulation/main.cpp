@@ -10,6 +10,7 @@
 #include "gray-scott.h"
 #include "writer.h"
 
+static MPI_Comm gcomm_;
 
 void print_settings(const Settings &s)
 {
@@ -41,9 +42,9 @@ int main(int argc, char **argv)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
 
-    const unsigned int color = 1;
-    MPI_Comm comm;
-    MPI_Comm_split(MPI_COMM_WORLD, color, wrank, &comm);
+
+    MPI_Comm comm = MPI_COMM_WORLD;
+
 
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &procs);
@@ -102,7 +103,7 @@ int main(int argc, char **argv)
             i++;
         }
 
-        dswriter.write(sim,i);
+        dswriter.write(sim,MPI_COMM_WORLD,i);
 
 
 #ifdef ENABLE_TIMERS
