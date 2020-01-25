@@ -45,7 +45,10 @@ void Writer::write(const GrayScott &sim, MPI_Comm comm, int &step)
 
     dspaces_lock_on_write("my_test_lock", &comm);
     int status = dspaces_put(VarNameU.data(),step, sizeof(double) ,3 ,lb ,ub ,u.data());
+    //wait the put operation finish
+    dspaces_put_sync();
     dspaces_unlock_on_write("my_test_lock", &comm);
+
 
     if (status!=0){
         std::cout << "error for the ts put at step " << step << "with status " << status << std::endl;

@@ -9,6 +9,7 @@
 #include "timer.hpp"
 #include "gray-scott.h"
 #include "writer.h"
+#include "../putgetMeta/metaclient.h"
 
 static MPI_Comm gcomm_;
 
@@ -42,9 +43,7 @@ int main(int argc, char **argv)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
 
-
     MPI_Comm comm = MPI_COMM_WORLD;
-
 
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &procs);
@@ -59,13 +58,10 @@ int main(int argc, char **argv)
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
-
     Settings settings = Settings::from_json(argv[1]);
 
     GrayScott sim(settings, comm);
     sim.init();
-
-
 
     if (rank == 0)
     {
@@ -87,7 +83,7 @@ int main(int argc, char **argv)
 #endif
 
     //Init the writer
-    Writer dswriter(MPI_COMM_WORLD,procs,1);
+    Writer dswriter(MPI_COMM_WORLD, procs, 1);
 
     for (int i = 0; i < settings.steps;)
     {
@@ -103,9 +99,6 @@ int main(int argc, char **argv)
             i++;
         }
 
-        dswriter.write(sim,MPI_COMM_WORLD,i);
-
-
 #ifdef ENABLE_TIMERS
         double time_compute = timer_compute.stop();
         MPI_Barrier(comm);
@@ -119,24 +112,31 @@ int main(int argc, char **argv)
                       << std::endl;
         }
 
-        size_t blockID = rank;
+        // the simulation start from the step 1 in this case
         size_t step = i;
 
+        //send record to the metadata server
+        if (rank == 0)
+        {
+            std::string recordKey = "Trigger_" + std::to_string(step);
+            MetaClient metaclient = getMetaClient();
+            std::string reply = metaclient.Recordtime(recordKey);
+        }
+
+        dswriter.write(sim, MPI_COMM_WORLD, i);
 
 #ifdef ENABLE_TIMERS
         double time_write = timer_write.stop();
-        double time_step = timer_total.stop();
+        double time_total = timer_total.stop();
         MPI_Barrier(comm);
 
-        log << i << "\t" << time_step << "\t" << time_compute << "\t"
+        log << i << "\t" << time_total << "\t" << time_compute << "\t"
             << time_write << std::endl;
 #endif
 
         //if the inline engine is used, read data and generate the vtkm data here
         //the adis needed to be installed before using
-
     }
-
 
 #ifdef ENABLE_TIMERS
     log << "total\t" << timer_total.elapsed() << "\t" << timer_compute.elapsed()
@@ -145,8 +145,6 @@ int main(int argc, char **argv)
     log.close();
 #endif
 
-
     dswriter.close();
     MPI_Finalize();
-
 }

@@ -1,0 +1,49 @@
+#!/bin/sh
+#SBATCH -p main
+#SBATCH --constraint=hal,broadwell,edr
+#SBATCH -t 00:10:00
+#SBATCH -N 8
+#SBATCH --ntasks-per-node=24
+
+# copy metadata server to current dir
+rm gray_scott_pe_* conf.*
+rm -rf Metaserver
+cp /home/zw241/cworkspace/build/build_MMServer/metaserver .
+srun --mem-per-cpu=2000 --ntasks=1 --cpus-per-task=2 --time=00:10:00 ./metaserver eno1 &> metaserver.log &
+
+
+# config the dataspace
+PJSRC=
+DSDIR=/home/zw241/cworkspace/build/build_dataspaces/bin
+SIMTASK=16
+DSTASK=8
+ANATASK=4 
+CONF_DIMS=816
+
+cp ${DSDIR}/dataspaces_server .
+
+# set the config file for dataspace
+echo "## Config file for DataSpaces
+ndim = 3
+dims = $CONF_DIMS,$CONF_DIMS,$CONF_DIMS
+
+max_versions = 1000
+lock_type = 1
+" > dataspaces.conf
+
+# start original gray-scott
+srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK --ntasks-per-node=1 --time=00:05:00 ./dataspaces_server -s $DSTASK &> dataspace.log &
+
+while [ ! -f ./conf.0 ]
+do
+    sleep 0.01
+done
+
+
+cp /home/zw241/cworkspace/src/GrayscottbyDS/setting/settings.json .
+
+srun --mpi=pmix_v2 --mem-per-cpu=2000 --ntasks=$SIMTASK ./gray-scott settings.json &> sim.log 
+
+srun --mpi=pmix_v2 --mem-per-cpu=2000 --ntasks=$ANATASK  ./isosurface settings.json 5 0.5 &> iso.log 
+
+wait

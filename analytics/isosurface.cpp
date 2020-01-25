@@ -13,6 +13,13 @@
 #include "reader.h"
 #include <thread>
 #include <unistd.h>
+#include "../simulation/timer.hpp"
+#include "../setting/settings.h"
+#include "../putgetMeta/metaclient.h"
+#include <time.h>
+#include <stdio.h>
+#include <unistd.h>
+#define BILLION 1000000000L
 
 void writeImageData(std::string fileName,
                     std::array<uint64_t, 3> &shape,
@@ -47,9 +54,9 @@ void writeImageData(std::string fileName,
 }
 
 vtkSmartPointer<vtkPolyData>
-    compute_isosurface(std::array<size_t, 3> &shape,
-                       std::array<size_t, 3> &offset,
-                       const std::vector<double> &field, double isovalue)
+compute_isosurface(std::array<size_t, 3> &shape,
+                   std::array<size_t, 3> &offset,
+                   const std::vector<double> &field, double isovalue)
 {
     // Convert field values to vtkImageData
     auto importer = vtkSmartPointer<vtkImageImport>::New();
@@ -97,6 +104,16 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &procs);
 
+    if (argc != 4)
+    {
+        if (rank == 0)
+        {
+            std::cerr << "Too few arguments" << std::endl;
+            std::cout << "Usage: isosurface setting.json steps isovalue" << std::endl;
+        }
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
     int dims[3] = {0};
     MPI_Dims_create(procs, 3, dims);
     int npx = dims[0];
@@ -113,7 +130,11 @@ int main(int argc, char *argv[])
     uint64_t pz = coords[2];
 
     //TODO this info is loaded from the setting.json
-    int shape[3] = {162, 162, 162};
+
+    Settings settings = Settings::from_json(argv[1]);
+    int dimValue = settings.L;
+
+    int shape[3] = {dimValue, dimValue, dimValue};
 
     uint64_t size_x = (shape[0] + npx - 1) / npx;
     uint64_t size_y = (shape[1] + npy - 1) / npy;
@@ -136,18 +157,8 @@ int main(int argc, char *argv[])
         size_z -= size_z * npz - shape[2];
     }
 
-    if (argc != 3)
-    {
-        if (rank == 0)
-        {
-            std::cerr << "Too few arguments" << std::endl;
-            std::cout << "Usage: isosurface steps isovalue" << std::endl;
-        }
-        MPI_Abort(MPI_COMM_WORLD, -1);
-    }
-
-    const double steps = std::stoi(argv[1]);
-    const double isovalue = std::stod(argv[2]);
+    const double steps = std::stoi(argv[2]);
+    const double isovalue = std::stod(argv[3]);
 
     std::vector<double> variableU;
     int step;
@@ -191,34 +202,31 @@ int main(int argc, char *argv[])
 
     for (int step = 1; step <= steps; step++)
     {
-
-#ifdef ENABLE_TIMERS
-
-        MPI_Barrier(comm);
-        timer_total.start();
-        timer_read.start();
-#endif
-
-        //read data
-
-#ifdef ENABLE_TIMERS
-        double time_read = timer_read.stop();
-        MPI_Barrier(comm);
-        timer_compute.start();
-#endif
-
-        //get blockMeta, extract the shape, offset, variableName
-
-        //get variable
-
-        //memset(data, 0, memsize);
-
         memset(data, 0, memsize);
 
         std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
         std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
 
+#ifdef ENABLE_TIMERS
+        MPI_Barrier(comm);
+        //timer_total.start();
+        //timer_read.start();
+
+        struct timespec start, end;
+        double diff;
+        clock_gettime(CLOCK_REALTIME, &start); /* mark start time */
+
+#endif
+
         reader.read(comm, lb, ub, step, data);
+
+        //record after read operation
+        if (rank == 0)
+        {
+            std::string recordKey = "Trigger_" + std::to_string(step);
+            MetaClient metaclient = getMetaClient();
+            std::string reply = metaclient.Recordtime(recordKey);
+        }
 
         //char countstr[50];
         //sprintf(countstr, "%02d_%04d", rank, step);
@@ -229,6 +237,14 @@ int main(int argc, char *argv[])
 
         //writeImageData(fname, shape, offset, data);
         //writePolyvtk(fname, polyData);
+#ifdef ENABLE_TIMERS
+        //double time_read = timer_read.stop();
+        MPI_Barrier(comm);
+        //some functions here
+        clock_gettime(CLOCK_REALTIME, &end); /* mark end time */
+        diff = (end.tv_sec - start.tv_sec) * 1.0 + (end.tv_nsec - start.tv_nsec) * 1.0 / BILLION;
+        log << "step\t" << step << "\t" << diff << std::endl;
+#endif
         std::cout << "ok to process data for step " << step << std::endl;
     }
 
