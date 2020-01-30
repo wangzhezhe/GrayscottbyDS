@@ -19,6 +19,10 @@
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include <thallium.hpp>
+
+namespace tl = thallium;
 #define BILLION 1000000000L
 
 void writeImageData(std::string fileName,
@@ -200,6 +204,9 @@ int main(int argc, char *argv[])
     double *data = NULL;
     data = (double *)malloc(memsize);
 
+        //this is used for the distributed timer
+    tl::engine globalclientEngine("verbs", THALLIUM_CLIENT_MODE);
+
     for (int step = 1; step <= steps; step++)
     {
         memset(data, 0, memsize);
@@ -223,9 +230,11 @@ int main(int argc, char *argv[])
         //record after read operation
         if (rank == 0)
         {
+ 
+
+                        MetaClient *metaclient = new MetaClient(&globalclientEngine);
             std::string recordKey = "Trigger_" + std::to_string(step);
-            MetaClient metaclient = getMetaClient();
-            std::string reply = metaclient.Recordtime(recordKey);
+            metaclient->Recordtime(recordKey);
         }
 
         //char countstr[50];

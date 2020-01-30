@@ -10,6 +10,9 @@
 #include "gray-scott.h"
 #include "writer.h"
 #include "../putgetMeta/metaclient.h"
+#include <thallium.hpp>
+
+namespace tl = thallium;
 
 static MPI_Comm gcomm_;
 
@@ -85,6 +88,9 @@ int main(int argc, char **argv)
     //Init the writer
     Writer dswriter(MPI_COMM_WORLD, procs, 1);
 
+    //this is used for the distributed timer
+    tl::engine globalclientEngine("verbs", THALLIUM_CLIENT_MODE);
+
     for (int i = 0; i < settings.steps;)
     {
 #ifdef ENABLE_TIMERS
@@ -118,9 +124,9 @@ int main(int argc, char **argv)
         //send record to the metadata server
         if (rank == 0)
         {
+            MetaClient *metaclient = new MetaClient(&globalclientEngine);
             std::string recordKey = "Trigger_" + std::to_string(step);
-            MetaClient metaclient = getMetaClient();
-            std::string reply = metaclient.Recordtime(recordKey);
+            metaclient->Recordtime(recordKey);
         }
 
         dswriter.write(sim, MPI_COMM_WORLD, i);
@@ -145,6 +151,6 @@ int main(int argc, char **argv)
     log.close();
 #endif
 
-    dswriter.close();
+    //dswriter.close();
     MPI_Finalize();
 }

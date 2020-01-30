@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.14)
 project (gray-scott C CXX)
 set (CMAKE_CXX_STANDARD 14)
 
@@ -8,58 +8,60 @@ set (DSINCLUDE /home/zw241/cworkspace/build/build_dataspaces/include)
 set (DSLINKDIR /home/zw241/cworkspace/build/build_dataspaces/lib)
 set (DSLINKLIB -ldspaces -ldscommon -ldart -lpthread -lm -lrt -libverbs -lrdmacm)
 
-option(USE_TIMERS "Use profiling timers")
-#if(USE_TIMERS)
-  message(STATUS "Enabling profiling timers")
-  add_definitions(-DENABLE_TIMERS)
-#endif()
 
-
-message("build with grpc")
-
-# GRPC and Protocol Buffers libraries location
-list(APPEND CMAKE_PREFIX_PATH "/scratch/zw241/cworkspace/build/build_grpc" "/scratch/zw241/cworkspace/build/build_protobuf")
-
-# Cmake find modules
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
-find_package(Protobuf REQUIRED)
-find_package(GRPC REQUIRED)
-
-set(PROTOS
-    ${CMAKE_CURRENT_LIST_DIR}/protos/metaserver.proto)
-
-set(PROTO_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto-src)
-file(MAKE_DIRECTORY ${PROTO_SRC_DIR})
-include_directories(${PROTO_SRC_DIR})
-
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_SRC_DIR} ${PROTOS})
-grpc_generate_cpp(GRPC_SRCS GRPC_HDRS ${PROTO_SRC_DIR} ${PROTOS})
-
+message(STATUS "Enabling profiling timers")
+add_definitions(-DENABLE_TIMERS)
 find_package(MPI REQUIRED) 
+
+
+# thallium env
+# add our cmake module directory to the path
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+     "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+
+# link shared lib with full rpath
+set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# setup cache variables for ccmake
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE Release
+         CACHE STRING "Choose the type of build." FORCE)
+    set_property (CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS 
+                  "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif ()
+set (CMAKE_PREFIX_PATH "" CACHE STRING "External dependencies path")
+set (BUILD_SHARED_LIBS "OFF" CACHE BOOL "Build a shared library")
+
+# packages we depend on (load all the necessary depedency by spack)
+include (xpkg-import)
+find_package (mercury REQUIRED)
+include_directories(${MERCURY_INCLUDE_DIR})
+xpkg_import_module (argobots REQUIRED argobots)
+xpkg_import_module (margo REQUIRED margo)
+xpkg_import_module (abtio REQUIRED abt-io)
+find_package (thallium REQUIRED)
+
+
+
+add_library(metaclient ./putgetMeta/metaclient.cpp)
+target_link_libraries(metaclient thallium)
 
 add_executable(gray-scott
   ./simulation/main.cpp
   ./simulation/gray-scott.cpp
   ./simulation/writer.cpp
-  ./setting/settings.cpp
-  ./putgetMeta/metaclient.cpp
-  ${PROTO_SRCS} 
-  ${GRPC_SRCS})
+  ./setting/settings.cpp)
   
 target_include_directories(gray-scott PUBLIC ${gray-scott}/simulation ${DSINCLUDE})
 target_link_directories(gray-scott PUBLIC ${DSLINKDIR})
-target_link_libraries(gray-scott MPI::MPI_C ${DSLINKLIB}
-gRPC::grpc++_reflection protobuf::libprotobuf)
+target_link_libraries(gray-scott MPI::MPI_C ${DSLINKLIB} metaclient)
 
 add_executable(isosurface
    ./analytics/isosurface.cpp
    ./analytics/reader.cpp
-   ./setting/settings.cpp
-   ./putgetMeta/metaclient.cpp
-   ${PROTO_SRCS} 
-   ${GRPC_SRCS}
-)
+   ./setting/settings.cpp)
 
 find_package(VTK COMPONENTS
     FiltersCore
@@ -70,5 +72,4 @@ find_package(VTK COMPONENTS
 
 target_include_directories(isosurface PUBLIC ${gray-scott}/analytics ${DSINCLUDE})
 target_link_directories(isosurface PUBLIC ${DSLINKDIR})
-target_link_libraries(isosurface MPI::MPI_C ${DSLINKLIB} ${VTK_LIBRARIES}
-gRPC::grpc++_reflection protobuf::libprotobuf)
+target_link_libraries(isosurface MPI::MPI_C ${DSLINKLIB} ${VTK_LIBRARIES} metaclient)
