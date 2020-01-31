@@ -1,14 +1,13 @@
 #!/bin/sh
 #SBATCH -p main
-#SBATCH --constraint=hal,broadwell,edr
-#SBATCH -N 4
-#SBATCH --ntasks-per-node=24
-#SBATCH -t 00:05:00
+#SBATCH -t 00:10:00
 
 PJSRC=
-DSDIR=/home/zw241/cworkspace/build/build_dataspaces/bin
-DSTASK=16 
-CONF_DIMS=512
+DSDIR=~/cworkspace/build/build_dataspaces/bin
+DSTASK=256
+SIMTASK=8192
+ANATASK=8192
+CONF_DIMS=3250
 
 cp ${DSDIR}/dataspaces_server .
 
@@ -23,7 +22,7 @@ lock_type = 1
 
 
 # start original gray-scott
-srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK --ntasks-per-node=1 --time=00:05:00 ./dataspaces_server -s $DSTASK
+srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK --time=00:05:00 ./dataspaces_server -s $DSTASK
 
 while [ ! -d ./conf.0 ]
 do
@@ -32,8 +31,8 @@ done
 
 /home/zw241/cworkspace/src/GrayscottbyDS/setting/settings.json .
 
-srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK ./gray-scott settings.json
+srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$SIMTASK ./gray-scott settings.json
 
-srun --mpi=pmix_v2 --mem-per-cpu=50000 --ntasks=$DSTASK ./isosurface settings.json 20 0.5
+srun --mpi=pmix_v2 --mem-per-cpu=50000 --ntasks=$ANATASK ./isosurface settings.json 20 0.5
 
 wait
