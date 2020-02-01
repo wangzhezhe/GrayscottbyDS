@@ -40,7 +40,7 @@ do
 done
 
 
-cp /home/zw241/cworkspace/src/GrayscottbyDS/setting/settings.json .
+cp ~/cworkspace/src/GrayscottbyDS/setting/settings.json .
 
 srun --mpi=pmix_v2 --mem-per-cpu=2000 --ntasks=$SIMTASK ./gray-scott settings.json &> sim.log 
 

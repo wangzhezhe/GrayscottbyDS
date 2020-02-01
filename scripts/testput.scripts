@@ -22,14 +22,14 @@ lock_type = 1
 
 
 # start original gray-scott
-srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK --time=00:05:00 ./dataspaces_server -s $DSTASK
+srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$DSTASK --time=00:05:00 ./dataspaces_server -s $DSTASK &> dataspace.log &
 
 while [ ! -d ./conf.0 ]
 do
     sleep 0.01
 done
 
-/home/zw241/cworkspace/src/GrayscottbyDS/setting/settings.json .
+cp ~/cworkspace/src/GrayscottbyDS/setting/settings.json .
 
 srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$SIMTASK ./gray-scott settings.json
 

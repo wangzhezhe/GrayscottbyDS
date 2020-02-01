@@ -1,0 +1,54 @@
+#SBATCH --qos=debug
+#SBATCH --nodes=22
+#SBATCH --time=10:00
+#SBATCH --licenses=cscratch1
+#SBATCH --constraint=haswell
+
+module load openmpi
+
+# copy metadata server to current dir
+rm gray_scott_pe_* conf* core cred srv.lck* sim.log iso.log dataspaces.log
+
+
+# config the dataspace
+PJSRC=
+DSDIR=$SCRATCH/ds_install
+CONF_DIMS=1290
+DSTASK=16
+DSNODE=4
+SIMTASK=512
+SIMNODE=16
+ANATASK=64
+ANANODE=2
+
+cp ${DSDIR}/bin/dataspaces_server .
+
+# set the config file for dataspace
+echo "## Config file for DataSpaces
+ndim = 3
+dims = $CONF_DIMS,$CONF_DIMS,$CONF_DIMS
+
+max_versions = 1000
+lock_type = 1
+" > dataspaces.conf
+
+# start original gray-scott
+
+srun -N $DSNODE -n $DSTASK -c 2 --cpu_bind=cores --time=00:05:00 ./dataspaces_server -s $DSTASK -c $SIMTASK &> dataspaces.log &
+
+while [ ! -f ./conf ]
+do
+    sleep 0.01
+done
+
+DSPID=$!
+
+sleep 2
+
+cp ~/cworkspace/src/GrayscottbyDS/setting/settings.json .
+
+srun -N $SIMNODE -n $SIMTASK -c 2  --cpu_bind=cores ./gray-scott settings.json &> sim.log 
+
+srun -N $ANANODE -n $ANATASK -c 2 --cpu_bind=cores ./isosurface settings.json 6 0.5 &> iso.log 
+
+wait

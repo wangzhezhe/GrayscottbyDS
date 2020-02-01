@@ -15,14 +15,14 @@
 #include <unistd.h>
 #include "../simulation/timer.hpp"
 #include "../setting/settings.h"
-#include "../putgetMeta/metaclient.h"
+//#include "../putgetMeta/metaclient.h"
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>
 
-#include <thallium.hpp>
+//#include <thallium.hpp>
 
-namespace tl = thallium;
+//namespace tl = thallium;
 #define BILLION 1000000000L
 
 void writeImageData(std::string fileName,
@@ -173,10 +173,11 @@ int main(int argc, char *argv[])
     Timer timer_compute;
     Timer timer_write;
 
-    std::ostringstream log_fname;
-    log_fname << "isosurface_pe_" << rank << ".log";
+    //std::ostringstream log_fname;
+    //log_fname << "isosurface_pe_" << rank << ".log";
+    //std::ofstream log(log_fname.str());
+    
 
-    std::ofstream log(log_fname.str());
 #endif
 
     //tl::engine clientEngine("verbs", THALLIUM_CLIENT_MODE);
@@ -196,23 +197,23 @@ int main(int argc, char *argv[])
     ub[1] = offset_y + size_y - 1;
     ub[2] = offset_z + size_z - 1;
 
-    std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
-    std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
+    //std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
+    //std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
 
     int memsize = size_x * size_y * size_z * sizeof(double);
 
     double *data = NULL;
     data = (double *)malloc(memsize);
 
-        //this is used for the distributed timer
-    tl::engine globalclientEngine("verbs", THALLIUM_CLIENT_MODE);
+    //this is used for the distributed timer
+    //tl::engine globalclientEngine("verbs", THALLIUM_CLIENT_MODE);
 
     for (int step = 1; step <= steps; step++)
     {
         memset(data, 0, memsize);
 
-        std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
-        std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
+        //std::cout << "rank" << rank << " lb " << lb[0] << "," << lb[1] << "," << lb[2] << std::endl;
+        //std::cout << "rank" << rank << " ub " << ub[0] << "," << ub[1] << "," << ub[2] << std::endl;
 
 #ifdef ENABLE_TIMERS
         MPI_Barrier(comm);
@@ -228,14 +229,13 @@ int main(int argc, char *argv[])
         reader.read(comm, lb, ub, step, data);
 
         //record after read operation
-        if (rank == 0)
-        {
- 
+        //if (rank == 0)
+        //{
 
-                        MetaClient *metaclient = new MetaClient(&globalclientEngine);
-            std::string recordKey = "Trigger_" + std::to_string(step);
-            metaclient->Recordtime(recordKey);
-        }
+        //  MetaClient *metaclient = new MetaClient(&globalclientEngine);
+        //  std::string recordKey = "Trigger_" + std::to_string(step);
+        //  metaclient->Recordtime(recordKey);
+        // }
 
         //char countstr[50];
         //sprintf(countstr, "%02d_%04d", rank, step);
@@ -252,23 +252,34 @@ int main(int argc, char *argv[])
         //some functions here
         clock_gettime(CLOCK_REALTIME, &end); /* mark end time */
         diff = (end.tv_sec - start.tv_sec) * 1.0 + (end.tv_nsec - start.tv_nsec) * 1.0 / BILLION;
-        log << "step\t" << step << "\t" << diff << std::endl;
+
+        //caculate the avg
+        double time_sum_read;
+        MPI_Reduce(&diff, &time_sum_read, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+        if(rank==0){
+            std::cout << "step " << step << " avg read " << time_sum_read/procs << std::endl;
+        }
+
+        //log << "step\t" << step << "\t" << diff << std::endl;
+
 #endif
-        std::cout << "ok to process data for step " << step << std::endl;
+        //std::cout << "ok to process data for step " << step << std::endl;
     }
 
 #ifdef ENABLE_TIMERS
     //log << "total\t" << timer_total.elapsed() << "\t" << timer_read.elapsed()
     //   << "\t" << timer_compute.elapsed() << std::endl;
+    //if( rank < 5 ){
+    //    log.close();
+    //}
 
-    log.close();
 #endif
 
     if (data)
     {
         free(data);
     }
-    reader.close();
+    //reader.close();
     MPI_Finalize();
 
     return 0;
