@@ -73,19 +73,30 @@ add_library(metaclient ./putgetMeta/metaclient.cpp)
 target_link_libraries(metaclient)
 
 add_executable(gray-scott
-  ./simulation/main.cpp
-  ./simulation/gray-scott.cpp
-  ./simulation/writer.cpp
-  ./setting/settings.cpp)
+  ./sim_gs/main.cpp
+  ./sim_gs/gray-scott.cpp
+  ./sim_gs/writer.cpp
+  ./sim_gs/settings_gs.cpp)
   
 target_include_directories(gray-scott PUBLIC ${gray-scott}/simulation ${DSINCLUDE})
 target_link_directories(gray-scott PUBLIC ${DSLINKDIR})
 target_link_libraries(gray-scott MPI::MPI_C ${DSLINKLIB})
 
+add_executable(synthetic-sim
+  ./sim_synthetic/main.cpp
+  ./sim_synthetic/sim_synthetic.cpp
+  ./sim_synthetic/writer.cpp
+  ./sim_synthetic/settings_syn.cpp)
+  
+target_include_directories(gray-scott PUBLIC ${gray-scott}/simulation ${DSINCLUDE})
+target_link_directories(gray-scott PUBLIC ${DSLINKDIR})
+target_link_libraries(gray-scott MPI::MPI_C ${DSLINKLIB})
+
+
 add_executable(isosurface
    ./analytics/isosurface.cpp
    ./analytics/reader.cpp
-   ./setting/settings.cpp)
+   ./sim_gs/settings_gs.cpp)
 
 find_package(VTK COMPONENTS
     FiltersCore

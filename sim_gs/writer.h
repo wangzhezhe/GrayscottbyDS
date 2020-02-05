@@ -3,7 +3,7 @@
 
 #include <mpi.h>
 #include "gray-scott.h"
-#include "../setting/settings.h"
+#include "settings_gs.h"
 #include "dataspaces.h"
 #include <vector>
 

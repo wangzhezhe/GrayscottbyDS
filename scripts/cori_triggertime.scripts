@@ -1,3 +1,4 @@
+#!/bin/bash
 #SBATCH --qos=debug
 #SBATCH --nodes=22
 #SBATCH --time=10:00

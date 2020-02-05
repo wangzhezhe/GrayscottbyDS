@@ -13,8 +13,7 @@
 #include "reader.h"
 #include <thread>
 #include <unistd.h>
-#include "../simulation/timer.hpp"
-#include "../setting/settings.h"
+#include "../sim_gs/settings_gs.h"
 //#include "../putgetMeta/metaclient.h"
 #include <time.h>
 #include <stdio.h>
@@ -168,10 +167,10 @@ int main(int argc, char *argv[])
     int step;
 
 #ifdef ENABLE_TIMERS
-    Timer timer_total;
-    Timer timer_read;
-    Timer timer_compute;
-    Timer timer_write;
+    //Timer timer_total;
+    //Timer timer_read;
+    //Timer timer_compute;
+    //Timer timer_write;
 
     //std::ostringstream log_fname;
     //log_fname << "isosurface_pe_" << rank << ".log";
