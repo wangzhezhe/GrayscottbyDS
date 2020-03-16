@@ -14,7 +14,7 @@ rm gray_scott_pe_* conf* core cred srv.lck* sim.log iso.log dataspaces.log
 # config the dataspace
 PJSRC=
 DSDIR=$SCRATCH/ds_install
-CONF_DIMS=1290
+CONF_DIMS=1288
 DSTASK=16
 DSNODE=4
 SIMTASK=512

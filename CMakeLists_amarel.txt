@@ -83,3 +83,5 @@ find_package(VTK COMPONENTS
 target_include_directories(isosurface PUBLIC ${gray-scott}/analytics ${DSINCLUDE})
 target_link_directories(isosurface PUBLIC ${DSLINKDIR})
 target_link_libraries(isosurface MPI::MPI_C ${DSLINKLIB} ${VTK_LIBRARIES} metaclient)
+
+add_subdirectory(sim_single)
