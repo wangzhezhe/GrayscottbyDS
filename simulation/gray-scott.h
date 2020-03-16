@@ -6,7 +6,7 @@
 
 #include <mpi.h>
 
-#include "settings_gs.h"
+#include "../setting/settings.h"
 
 class GrayScott
 {

@@ -35,6 +35,4 @@ srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=$SIMTASK ./gray-scott settings.j
 
 srun --mpi=pmix_v2 --mem-per-cpu=50000 --ntasks=$ANATASK ./isosurface settings.json 20 0.5
 
-srun --mpi=pmix_v2 --mem-per-cpu=20000 --ntasks=1 ./synthetic-sim ~/cworkspace/src/GrayscottbyDS/sim_synthetic/settings_syn.json
-
 wait

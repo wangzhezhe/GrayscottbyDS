@@ -1,7 +1,7 @@
 #include <fstream>
 
-#include "../utils/json.hpp"
-#include "settings_gs.h"
+#include "json.hpp"
+#include "settings.h"
 
 void to_json(nlohmann::json &j, const Settings &s)
 {
